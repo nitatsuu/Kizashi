@@ -4,6 +4,19 @@
 Binary hourly forecast: will there be an air raid alert in Kharkiv
 in the next hour.
 
+## AI interaction log
+The full build session with Claude Code is included for review:
+
+- **`log/session.jsonl`** — verbatim session export in Claude Code's native
+  format (primary source of truth).
+- **`log/kizashi_ai_log.md`** — the same session converted to readable Markdown
+  (tool calls noted inline; lengthy tool outputs omitted for readability).
+- **`log/chat_transcript.md`** — an AI-generated narrative summary of the
+  session (paraphrased, not verbatim — provided only as a readable overview).
+
+All engineering decisions, errors caught, and iterations visible in the README
+are traceable to this log.
+
 ## Reproducing results
 
 **Prerequisites:** Python 3.14, `python3.14-venv` (`sudo apt install python3.14-venv`).
