@@ -23,6 +23,7 @@ days; richer signal than a deep-rear region.
 **Data-quality note:** two corrupt records were identified during this investigation that alone spanned every hour from June 2024 to January 2026 (the spurious 1.0 band); these were removed.  
 **EDA result** — located into the **Exploratory Data Analysis** section.  
 - **Holiday features were dropped:** Ukraine repeatedly shifted official holiday dates during 2022–2025 (e.g. moving Christmas to Dec 25), which standard holiday libraries do not resolve correctly per-year, risking mislabeled features. Given that EDA already showed calendar signals (including day-of-week) to be weak secondary predictors, an unreliable holiday feature was judged not worth the noise.  
+- **Copy of kharkiv_features.parquet** — made it before modeling to check whether feature has negative impact on model or not.  
 
 ## Data source
 - **Vadimkin/ukrainian-air-raid-sirens-dataset** — Flat CSV (no api code, just cloning through git); data starting from 2022 (~13k raw Kharkiv alerts and ~29k hourly rows after gridding and capping); updated daily; MIT license — free to use. Use `official_data_en.csv` from git repository.
@@ -87,13 +88,9 @@ e.g., 02:00 on a Friday) is deterministic and known at decision time. Only the a
 are computed in Europe/Kyiv. The pipeline converts on load, so values are internally
 consistent; the raw column may appear shifted when inspected directly.
 
-**Temporal split (not random):** train on the earlier period, test on the most recent —
-never a random shuffle, which would let the model see the future and produce inflated
+**Temporal split (not random):** train on the earlier period, test on the most recent — never a random shuffle, which would let the model see the future and produce inflated
 scores. This also evaluates the model under the most current regime.
 
-**Known risk — `days_since_start` under temporal split:** this monotonic feature takes
-values in the test set beyond any seen in training, so tree models extrapolate it as a
-constant. Flagged for inspection via feature importance; retained as a deliberate,
-documented choice.
+**Known risk — `days_since_start` under temporal split:** this monotonic feature takes values in the test set beyond any seen in training, so tree models extrapolate it as aconstant. Flagged for inspection via feature importance; retained as a deliberate, documented choice.
 ## (to fill) Models & results
 ## (to fill) Limitations
