@@ -86,5 +86,10 @@ if __name__ == "__main__":
     print(f"\nTarget distribution:\n{df['target'].value_counts().to_dict()}")
     print(f"Base rate: {df['target'].mean():.3f}")
 
-    df[["hour", "alert", *feature_cols, "target", "naive_flag"]].to_parquet(OUT_PATH, index=False)
+    out_cols = ["hour", "alert", *feature_cols, "target", "naive_flag"]
+    df[out_cols].to_parquet(OUT_PATH, index=False)
     print(f"\nSaved → {OUT_PATH}")
+
+    no_drift_path = OUT_PATH.replace(".parquet", "_no_drift.parquet")
+    df[[c for c in out_cols if c != "days_since_start"]].to_parquet(no_drift_path, index=False)
+    print(f"Saved → {no_drift_path}")
