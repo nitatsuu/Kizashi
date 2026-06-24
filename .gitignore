@@ -1,0 +1,28 @@
+# virtual environment
+.venv/
+
+# data
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+
+# outputs
+models/
+outputs/
+figures/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# editors
+.vscode/
+*.swp
+*.swo
+
+# claude code
+.claude/
