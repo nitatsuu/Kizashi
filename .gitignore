@@ -13,7 +13,6 @@ __pycache__/
 # outputs
 models/
 outputs/
-figures/
 
 # OS
 .DS_Store

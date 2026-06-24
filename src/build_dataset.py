@@ -7,11 +7,18 @@ import pandas as pd
 RAW_PATH = "data/official_data_en.csv"
 OUT_PATH = "data/kharkiv_hourly.parquet"
 TZ = "Europe/Kyiv"
+# Aug 1 2025: Kharkiv switched from oblast-level to raion/hromada recording.
+# Oblast records drop from ~190/month to 44 in Aug, then 0 in Sep.
+# Cap here for a consistent target definition across the full series.
+CUTOFF_UTC = "2025-08-01 00:00:00+00:00"
 
 
 def load_kharkiv_alerts() -> pd.DataFrame:
     df = pd.read_csv(RAW_PATH, parse_dates=["started_at", "finished_at"])
     df = df[(df["oblast"] == "Kharkivska oblast") & (df["level"] == "oblast")].copy()
+    # raw CSV contains exact duplicate rows — deduplicate before any processing
+    df = df.drop_duplicates(subset=["oblast", "raion", "hromada", "level", "started_at", "finished_at"])
+    df = df[df["started_at"] < CUTOFF_UTC]
     df["started_at"] = df["started_at"].dt.tz_convert(TZ)
     df["finished_at"] = df["finished_at"].dt.tz_convert(TZ)
     # alerts with duration == 30 min are likely imputed ends (naive)
@@ -50,10 +57,13 @@ def build_hourly_series(alerts: pd.DataFrame) -> pd.DataFrame:
     )
     agg["alert"] = 1  # every row in agg means at least one alert was active
 
-    # full hourly index from first to last hour in dataset
+    # full hourly index: start at first alert, end at last complete hour of July
+    # (cutoff midnight UTC = 03:00 Kyiv; floor to day - 1h = 23:00 July 31 Kyiv)
+    cutoff_local = pd.Timestamp(CUTOFF_UTC).tz_convert(TZ)
+    series_end = cutoff_local.floor("D") - pd.Timedelta("1h")
     full_index = pd.date_range(
         start=alerts["started_at"].min().floor("h"),
-        end = max(alerts["started_at"].max(), alerts["finished_at"].max()).floor("h"),
+        end=series_end,
         freq="h",
         tz=TZ,
     )
