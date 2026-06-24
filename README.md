@@ -34,24 +34,37 @@ Outputs: `data/kharkiv_hourly.parquet`, `data/kharkiv_features.parquet`,
 ## Key decisions
 - **Binary target (alert yes/no per hour)** — chose occurrence over
 duration/intensity to keep the target clean and the problem tractable in the 2-day scope.
+
 - **Region: Kharkiv** — front-line, so alerts occur not only on mass-strike
 days; richer signal than a deep-rear region.
+
 - **No database** — ~29k hourly rows; flat file + pandas is sufficient, a DB would be over-engineering.
+
 - **Data: March 2022 – August 2025 (capped at reform point)** — series truncated at the alert-system structural break (see below); longer history within this window captures seasonal and drift structure. Concept drift addressed via temporal split.
+
 - **Imputed alert ends (naive=True) retained** — target is occurrence, not duration, so imputation noise (affecting only duration) does not affect the target. The dataset's documentation describes a `naive=True` flag for alerts with missing end signals, but the `_en` CSV does not actually expose this column; it was reconstructed by detecting exactly-30-minute durations (the documented imputation rule). Only 4 of 13,308 Kharkiv alerts flagged (~0.03%) — negligible.
+
 - **Source=official** — original repository has two sources; decided to use `official`.
+
 - **TZ=Europe/Kyiv** — using a named timezone instead of a hardcoded offset (UTC+2/+3) to prevent summer/winter time errors.
-- **UTC time format while reasembling to hours** —  changed time format to UTC while resampling dataset to hours to avoid mistakes with two same existing hours (and moving alert one hour back/forward). After resampling dataset — changing back to local `TZ`. 
-- **Series boundary by finished_at** — the hourly grid end was initially set by `started_at.max()`, which could drop the tail of a long final alert. Switched to `finished_at.max()`. (**Note:** an earlier all-data version pulled in false September 2025 data that was later cut — resolved when the series was capped at the reform point.)
+
+- **UTC time format while reasembling to hours** —  changed time format to UTC while resampling dataset to hours to avoid mistakes with two same existing hours (and moving alert one hour back/forward). After resampling dataset — changing back to local `TZ`.  
+
+- **Series boundary by finished_at** — the hourly grid end was initially set by `started_at.max()`, which could drop the tail of a long final alert. Switched to `finished_at.max()`. (**Note:** an earlier all-data version pulled in false September 2025 data that was later cut — resolved when the series was capped at the reform point.)  
+
 - **Structural break** — alert system differentiation (2025). During EDA, the monthly alert-rate plot revealed an anomalous band of near-100% alert rate and a distorted signal from 2024–2025. Investigation (confirmed via news sources) traced this to a change in how alerts are recorded, not a change in actual strike activity — Kharkiv oblast led Ukraine in alert frequency throughout 2025. Kharkiv introduced a differentiated alert system in two stages: the `city` was separated from the `oblast` (22 Feb 2025), and the `oblast` was subdivided to `raion/hromada` level (1 Aug 2025). Threats previously logged as a single oblast-wide alert became multiple independent sub-regional records.  
 **This is a structural break, not concept drift:** the unit of observation changed. Pre-reform, the target was a single oblast-wide siren; post-reform, it is the union of ~7 independent raion sirens.  
 **Hypothesis tested and rejected:** I first attempted to reconstruct an oblast-wide target by aggregating alerts across all administrative levels (oblast/raion/hromada). EDA showed this produces a degenerate target — with multiple raions holding independent alert windows, their union covers nearly all post-reform hours (alert rate → ~1.0), so the signal would be almost constant and unpredictable in a meaningful sense. The aggregated signal is not equivalent to the pre-reform oblast signal.  
 **Resolution:** I restricted the dataset to `level == "oblast"` records and capped the series at the reform point (~August 2025), yielding a temporally homogeneous target from March 2022 to August 2025 (~3.5 years, ~29k hourly rows) where "oblast under alert" carries a single consistent meaning throughout. This is a deliberate design choice driven by the recording-system change, not a data-availability limitation — stitching across the discontinuity would require an arbitrary cutoff and introduce new inconsistency, which is not justified for this scope.  
 **Data-quality note:** two corrupt records were identified during this investigation that alone spanned every hour from June 2024 to January 2026 (the spurious 1.0 band); these were removed.  
 **EDA result** — located into the **Exploratory Data Analysis** section.  
+
 - **Holiday features were dropped:** Ukraine repeatedly shifted official holiday dates during 2022–2025 (e.g. moving Christmas to Dec 25), which standard holiday libraries do not resolve correctly per-year, risking mislabeled features. Given that EDA already showed calendar signals (including day-of-week) to be weak secondary predictors, an unreliable holiday feature was judged not worth the noise.  
+
 - **Copy of kharkiv_features.parquet** — made it before modeling to check whether feature has negative impact on model or not.
+
 - **Persistence baseline off-by-one (caught & fixed)** — the persistence baseline initially used `alert_lag_1` (= alert at T−1), predicting T+1 from T−1 and skipping the current hour, which understated the baseline (0.73 PR-AUC) and inflated the model's apparent margin. Corrected to use alert at decision-time T (0.808), giving an honest comparison. The model's real edge over persistence dropped from a misleading +0.11 to a truthful +0.03.
+
 - **Feature importance: gain, not split count** — default LightGBM importance is split-count, which inflated high-cardinality calendar features and undervalued the binary `alert_lag_1`, contradicting the ACF prediction. Switched to gain-based importance, which reconciled the picture; both are plotted for transparency.
 
 ## Data source
@@ -125,7 +138,7 @@ scores. This also evaluates the model under the most current regime.
 
 ## Models & results
 
-Three baselines and two LightGBM variants, all evaluated on the held-out test period (Jan–Jul 2025, ~5,084 hours, test base rate 0.685). Primary metric: PR-AUC.  
+Two baselines and two LightGBM variants, all evaluated on the held-out test period (Jan–Jul 2025, ~5,084 hours, test base rate 0.685). Primary metric: PR-AUC.  
 
 | Model | PR-AUC | F1 | Recall |
 |---|---|---|---|
